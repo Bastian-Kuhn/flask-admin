@@ -9,6 +9,9 @@ from flask_admin.model.fields import InlineFormField
 from mongoengine import BooleanField
 from mongoengine import connect
 from mongoengine import Document
+from mongoengine import EmbeddedDocument
+from mongoengine import EmbeddedDocumentField
+from mongoengine import EmbeddedDocumentListField
 from mongoengine import ReferenceField
 from mongoengine import StringField
 from testcontainers.mongodb import MongoDbContainer
@@ -25,10 +28,20 @@ class InnerForm(form.Form):
     test = fields.StringField("Test")
 
 
+class Inner(EmbeddedDocument):
+    name = StringField()
+    test = StringField()
+
+
 class User(Document):
     name = StringField()
-    # Add other fields as needed
-    meta = {"collection": "user"}  # Matches the 'user' collection in MongoDB
+    email = StringField()
+    password = StringField()
+
+    inner = EmbeddedDocumentField(Inner, default=Inner)
+    form_list = EmbeddedDocumentListField(Inner, default=list)
+
+    meta = {"collection": "user"}
 
 
 class UserForm(form.Form):
@@ -86,22 +99,24 @@ class TweetView(ModelView):
     def get_list(self, *args, **kwargs):
         count, data = super().get_list(*args, **kwargs)
 
-        # Grab user names
-        query = {"_id": {"$in": [x["user_id"] for x in data]}}
-        users = User.objects(__raw__=query).only("name")
+        # Extract user IDs from tweets
+        user_ids = [tweet.user_id.id if tweet.user_id else None for tweet in data]
+        user_ids = list(filter(None, user_ids))  # Remove None values
 
-        # Contribute user names to the models
-        users_map = dict((x["_id"], x["name"]) for x in users)
+        # Fetch user names by IDs
+        users = User.objects(id__in=user_ids).only("name")
+        users_map = {user.id: user.name for user in users}
 
-        for item in data:
-            item["user_name"] = users_map.get(item["user_id"])
+        # Add user_name attribute for display
+        for tweet in data:
+            tweet.user_name = users_map.get(tweet.user_id.id if tweet.user_id else None)
 
         return count, data
 
     # Contribute list of user choices to the forms
     def _feed_user_choices(self, form):
         users = User.objects.only("name")
-        form.user_id.choices = [(str(x["_id"]), x["name"]) for x in users]
+        form.user_id.choices = [(str(user.id), user.name) for user in users]
         return form
 
     def create_form(self):
@@ -112,12 +127,10 @@ class TweetView(ModelView):
         form = super().edit_form(obj)
         return self._feed_user_choices(form)
 
-    # Correct user_id reference before saving
     def on_model_change(self, form, model, is_created):
-        user_id = model.get("user_id")
-        model["user_id"] = ObjectId(user_id)
-
-        return model
+        if isinstance(model.user_id, str):
+            model.user_id = ObjectId(model.user_id)
+        return super().on_model_change(form, model, is_created)
 
 
 # Flask views
