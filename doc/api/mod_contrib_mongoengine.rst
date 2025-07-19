@@ -1,9 +1,9 @@
-``flask_admin.contrib.pymongo``
-===============================
+``flask_admin.contrib.mongoengine``
+===================================
 
-PyMongo model backend implementation.
+MongoEngine model backend implementation.
 
-.. automodule:: flask_admin.contrib.pymongo
+.. automodule:: flask_admin.contrib.mongoengine
 
     .. autoclass:: ModelView
         :members:

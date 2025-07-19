@@ -1,7 +1,16 @@
+from mongoengine import Document
+from mongoengine import StringField
+from mongoengine.connection import get_db
 from wtforms import fields
 from wtforms import form
 
-from flask_admin.contrib.pymongo import ModelView
+from flask_admin.contrib.mongoengine import ModelView
+
+
+class Test(Document):
+    __test__ = False
+    test1 = StringField()
+    test2 = StringField()
 
 
 class TestForm(form.Form):
@@ -19,11 +28,13 @@ class TestView(ModelView):
 
 
 def test_model(app, db, admin):
-    view = TestView(db.test, "Test")
+    view = TestView(Test, "Test", endpoint="testview")
     admin.add_view(view)
 
     # Drop existing data (if any)
-    db.test.delete_many({})
+    db = get_db()
+    for name in db.list_collection_names():
+        db.drop_collection(name)
 
     assert view.name == "Test"
     assert view.endpoint == "testview"
@@ -49,8 +60,7 @@ def test_model(app, db, admin):
         "/admin/testview/new/", data=dict(test1="test1large", test2="test2")
     )
     assert rv.status_code == 302
-
-    model = db.test.find()[0]
+    model = Test.objects.first()
     print(model)
     assert model["test1"] == "test1large"
     assert model["test2"] == "test2"
@@ -59,7 +69,7 @@ def test_model(app, db, admin):
     assert rv.status_code == 200
     assert "test1large" in rv.data.decode("utf-8")
 
-    url = "/admin/testview/edit/?id={}".format(model["_id"])
+    url = f"/admin/testview/edit/?id={model.pk}"
     rv = client.get(url)
     assert rv.status_code == 200
 

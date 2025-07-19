@@ -1,48 +1,37 @@
-"""
-Example of Flask-Admin using TinyDB with TinyMongo
-refer to README.txt for instructions
-
-Author:  Bruno Rocha <@rochacbruno>
-Based in PyMongo Example and TinyMongo
-"""
-
-import flask_admin as admin
+from bson import ObjectId
 from flask import Flask
-from flask_admin.contrib.pymongo import filters
-from flask_admin.contrib.pymongo import ModelView
+from flask_admin import Admin
+from flask_admin.contrib.mongoengine import filters
+from flask_admin.contrib.mongoengine import ModelView
 from flask_admin.form import Select2Widget
 from flask_admin.model.fields import InlineFieldList
 from flask_admin.model.fields import InlineFormField
-from tinymongo import TinyMongoClient
+from mongoengine import BooleanField
+from mongoengine import connect
+from mongoengine import Document
+from mongoengine import ReferenceField
+from mongoengine import StringField
+from testcontainers.mongodb import MongoDbContainer
 from wtforms import fields
 from wtforms import form
 
-# Create application
 app = Flask(__name__)
-
-# Create dummy secrey key so we can use sessions
-app.config["SECRET_KEY"] = "123456790"
-
-# Create models in a JSON file localted at
-
-DATAFOLDER = "/tmp/flask_admin_test"
-
-conn = TinyMongoClient(DATAFOLDER)
-db = conn.test
-
-# create some users for testing
-# for i in range(30):
-#     db.user.insert({'name': 'Mike %s' % i})
+app.config["SECRET_KEY"] = "secret"
+admin = Admin(app, name="Example: MongoEngine")
 
 
-# User admin
 class InnerForm(form.Form):
     name = fields.StringField("Name")
     test = fields.StringField("Test")
 
 
+class User(Document):
+    name = StringField()
+    # Add other fields as needed
+    meta = {"collection": "user"}  # Matches the 'user' collection in MongoDB
+
+
 class UserForm(form.Form):
-    foo = fields.StringField("foo")
     name = fields.StringField("Name")
     email = fields.StringField("Email")
     password = fields.StringField("Password")
@@ -55,13 +44,18 @@ class UserForm(form.Form):
 
 
 class UserView(ModelView):
-    column_list = ("name", "email", "password", "foo")
+    column_list = ("name", "email", "password")
     column_sortable_list = ("name", "email", "password")
 
     form = UserForm
 
-    page_size = 20
-    can_set_page_size = True
+
+class Tweet(Document):
+    name = StringField(required=True)
+    user_id = ReferenceField(User, required=True)
+    text = StringField(required=True)
+    testie = BooleanField(default=False)
+    meta = {"collection": "tweet"}
 
 
 # Tweet view
@@ -85,22 +79,28 @@ class TweetView(ModelView):
         filters.BooleanEqualFilter("testie", "Testie"),
     )
 
-    # column_searchable_list = ('name', 'text')
+    column_searchable_list = ("name", "text")
 
     form = TweetForm
 
     def get_list(self, *args, **kwargs):
         count, data = super().get_list(*args, **kwargs)
 
-        # Contribute user_name to the models
+        # Grab user names
+        query = {"_id": {"$in": [x["user_id"] for x in data]}}
+        users = User.objects(__raw__=query).only("name")
+
+        # Contribute user names to the models
+        users_map = dict((x["_id"], x["name"]) for x in users)
+
         for item in data:
-            item["user_name"] = db.user.find_one({"_id": item["user_id"]})["name"]
+            item["user_name"] = users_map.get(item["user_id"])
 
         return count, data
 
     # Contribute list of user choices to the forms
     def _feed_user_choices(self, form):
-        users = db.user.find(fields=("name",))
+        users = User.objects.only("name")
         form.user_id.choices = [(str(x["_id"]), x["name"]) for x in users]
         return form
 
@@ -113,9 +113,9 @@ class TweetView(ModelView):
         return self._feed_user_choices(form)
 
     # Correct user_id reference before saving
-    def on_model_change(self, form, model):
+    def on_model_change(self, form, model, is_created):
         user_id = model.get("user_id")
-        model["user_id"] = user_id
+        model["user_id"] = ObjectId(user_id)
 
         return model
 
@@ -127,12 +127,11 @@ def index():
 
 
 if __name__ == "__main__":
-    # Create admin
-    admin = admin.Admin(app, name="Example: TinyMongo - TinyDB")
+    with MongoDbContainer("mongo:7.0.7") as mongo:
+        mongo_uri = mongo.get_connection_url()
+        connect(host=mongo_uri)
 
-    # Add views
-    admin.add_view(UserView(db.user, "User"))
-    admin.add_view(TweetView(db.tweet, "Tweets"))
+        admin.add_view(UserView(User, "User"))
+        admin.add_view(TweetView(Tweet, "Tweets"))
 
-    # Start app
-    app.run(debug=True)
+        app.run(debug=True)

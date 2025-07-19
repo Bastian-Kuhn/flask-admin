@@ -464,16 +464,28 @@ Known issues:
 For more, check the :class:`~flask_admin.contrib.peewee` API documentation. Or look at
 the Peewee example at https://github.com/pallets-eco/flask-admin/tree/master/examples/peewee.
 
-PyMongo
-*******
+MongoEngine
+***********
 
-The bare minimum you have to provide for Flask-Admin to work with PyMongo:
+The bare minimum you have to provide for Flask-Admin to work with MongoEngine:
 
  1. A list of columns by setting `column_list` property
  2. Provide form to use by setting `form` property
- 3. When instantiating :class:`flask_admin.contrib.pymongo.ModelView` class, you have to provide PyMongo collection object
+ 3. When instantiating :class:`flask_admin.contrib.mongoengine.ModelView` class, you have to provide MongoEngine Document object
 
-This is minimal PyMongo view::
+This is minimal MongoEngine view::
+
+  from mongoengine import Document
+  from mongoengine import StringField
+  from mongoengine.connection import get_db
+  from wtforms import fields
+  from wtforms import form
+
+  from flask_admin.contrib.mongoengine import ModelView
+
+  class User(Document):
+      name = StringField()
+      email = StringField()
 
   class UserForm(Form):
       name = StringField('Name')
@@ -485,14 +497,12 @@ This is minimal PyMongo view::
 
   if __name__ == '__main__':
       admin = Admin(app)
-
-      # 'db' is PyMongo database object
-      admin.add_view(UserView(db['users']))
+      admin.add_view(UserView(User))
 
 On top of that you can add sortable columns, filters, text search, etc.
 
-For more, check the :class:`~flask_admin.contrib.pymongo` API documentation. Or look at
-the pymongo example at https://github.com/pallets-eco/flask-admin/tree/master/examples/pymongo.
+For more, check the :class:`~flask_admin.contrib.mongoengine` API documentation. Or look at
+the mongoengine example at https://github.com/pallets-eco/flask-admin/tree/master/examples/mongoengine.
 
 Migrating From Django
 ---------------------
@@ -521,7 +531,7 @@ though it is easy to get started with a simple `CRUD <https://en.wikipedia.org/w
 interface for each model in your application, Flask-Admin doesn't fix you to this approach, and you are free to
 define other ways of interacting with some, or all, of your models.
 
-Due to Flask-Admin supporting more than one ORM (SQLAlchemy, Peewee, raw pymongo), the developer is even
+Due to Flask-Admin supporting more than one ORM (SQLAlchemy, Peewee, MongoEngine), the developer is even
 free to mix different model types into one application by instantiating appropriate CRUD classes.
 
 Here is a list of some of the configuration properties that are made available by Flask-Admin and the

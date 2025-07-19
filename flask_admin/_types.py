@@ -45,7 +45,7 @@ if t.TYPE_CHECKING:
     from flask_sqlalchemy import Model as T_SQLALCHEMY_MODEL
     from flask_admin.contrib.peewee.form import BaseModel as T_PEEWEE_MODEL
     from peewee import Field as T_PEEWEE_FIELD  # noqa
-    from pymongo import MongoClient as T_MONGO_CLIENT
+    from mongoengine import Document as T_MONGO_CLIENT
     import sqlalchemy  # noqa
     from sqlalchemy import Column as T_SQLALCHEMY_COLUMN
     from sqlalchemy import Table as T_TABLE  # noqa
@@ -88,7 +88,7 @@ else:
     T_SQLALCHEMY_MODEL = "flask_sqlalchemy.Model"
     T_PEEWEE_FIELD = "peewee.Field"
     T_PEEWEE_MODEL = "peewee.BaseModel"
-    T_MONGO_CLIENT = "pymongo.MongoClient"
+    T_MONGO_CLIENT = "mongoengine.Document"
     T_TABLE = "sqlalchemy.Table"
     T_CHOICE_TYPE = "sqlalchemy_utils.ChoiceType"
     T_CHOICE = "sqlalchemy_utils.Choice"

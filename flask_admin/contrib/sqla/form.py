@@ -883,7 +883,7 @@ class InlineModelConverter(InlineModelConverterBase):
 
         reverse_props = []
         forward_reverse_props_keys: dict[str, str] = dict()
-        for prop in target_mapper.iterate_properties:  # type: ignore[misc]
+        for prop in target_mapper.iterate_properties:
             if hasattr(prop, "direction") and prop.direction.name in (
                 "MANYTOONE",
                 "MANYTOMANY",
@@ -909,7 +909,7 @@ class InlineModelConverter(InlineModelConverterBase):
                     # issubclass is more useful than equal comparator in the case
                     # of inheritance
                     if prop.key not in forward_reverse_props_keys.keys() and issubclass(
-                        target_mapper.class_,  # type: ignore[arg-type]
+                        target_mapper.class_,
                         prop.mapper.class_,
                     ):
                         forward_reverse_props_keys[prop.key] = reverse_prop.key
@@ -1002,7 +1002,7 @@ class InlineModelConverter(InlineModelConverterBase):
                 self.inline_field_list_type(
                     child_form,
                     self.session,
-                    info.model,  # type: ignore[arg-type]
+                    info.model,
                     reverse_prop_key,
                     info,
                     **kwargs,
@@ -1023,7 +1023,7 @@ class InlineOneToOneModelConverter(InlineModelConverter):
 
         inline_relationship = dict()
 
-        for forward_prop in mapper.iterate_properties:  # type: ignore[misc]
+        for forward_prop in mapper.iterate_properties:
             if not hasattr(forward_prop, "direction"):
                 continue
 
